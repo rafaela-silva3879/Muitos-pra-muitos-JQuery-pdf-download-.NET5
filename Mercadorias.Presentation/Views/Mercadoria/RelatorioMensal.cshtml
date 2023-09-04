@@ -1,0 +1,339 @@
+﻿@model Mercadorias.Presentation.Models.MesAnoModel
+
+@{
+    Layout = "~/Views/Shared/Layout.cshtml";
+    ViewBag.Title = "Create";
+}
+
+<div class="alert alert-success" id="divSuccess">
+    <strong>Sucesso!</strong> <label id="successMsg"></label>
+    @* <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>*@
+</div>
+
+<div class="alert alert-danger" id="divErro">
+    <strong>Erro!</strong>  <label id="errorMsg"></label>
+    @*    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>*@
+</div>
+
+
+<form id="friendform">
+
+    <h5>Consulta de saídas</h5>
+    <p>Informe o mês e o ano para consultar suas mercadorias.</p>
+    <div class="row">
+        <div class="col-md-4">
+            <label>Mês</label>
+            <select class="form-control" required id="mesDropdown" name="mesDropdown"></select>
+        </div>
+        <div class="col-md-4">
+            <label>Ano</label>
+            <select class="form-control" required id="anoDropdown" name="anoDropdown"></select>
+        </div>
+
+    </div>
+    <br />
+    <div class="row">
+
+        <div class="col-md-8" style="display:inline-flex">
+
+            <input type="button" id="btnSubmit" class="btn btn-primary" value="Pesquisar" />
+            &nbsp; &nbsp; &nbsp;
+            <input type="button" id="btnPdf" class="btn btn-primary" value="Gerar Relatório">
+            &nbsp; &nbsp;
+            <div id="divLinkDownload">
+                <a href="#" id="linkDownload" download>Baixar Relatório</a>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="row">
+        <div class="col-md-12">
+            <div id="chartContainer"></div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-12">
+            <table id="exampleDatatable" class="table table-sm table-hover mt-3">
+                <thead>
+                    <tr>
+                        <th>Nome da Mercadoria</th>
+                        <th>Número do Registro</th>
+                        <th>Quantidade de Entrada no mês</th>
+                        <th>Quantidade de Saída no mês</th>
+                        <th>Quantidade Restante</th>
+                    </tr>
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+
+
+</form>
+
+
+
+<!---Datatables-->
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/v/dt/dt-1.13.2/af-2.5.2/datatables.min.css" />
+<script type="text/javascript" src="https://cdn.datatables.net/v/dt/dt-1.13.2/af-2.5.2/datatables.min.js"></script>
+<!--End datatables-->
+<!--gráfico-->
+<script src="https://code.highcharts.com/highcharts.js"></script>
+<!--end gráfico-->
+@*validation*@
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validate/1.19.5/jquery.validate.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validate/1.19.5/additional-methods.min.js"></script>
+<style>
+    .my-error-class {
+        color: #FF0000; /* red */
+    }
+
+</style>
+<script>
+    jQuery.extend(jQuery.validator.messages, {
+        required: "Este campo é requerido."
+    });
+    $(document).ready(function () {
+
+
+        $("form").validate({
+            errorClass: "my-error-class"
+        });
+
+
+
+
+        // Variável global para armazenar o caminho de download
+        var downloadPath = '';
+
+        $("#divErro").hide();
+        $("#divSuccess").hide();
+        $("#divLinkDownload").hide();
+
+        $.ajax({
+            type: "GET",
+            url: "/Mercadoria/GetMes",
+            contentType: "application/json; chatset=utf-8",
+            cache: false,
+            data: "{}",
+            success: function (data) {
+                var s = '<option value="">Por favor, selecione um mês.</option>';
+                for (var i = 0; i < data.length; i++) {
+                    s += '<option value="' + data[i].id + '">' + data[i].mes + '</option>';
+                }
+                $("#mesDropdown").html(s);
+            },
+            error: function (xhr, status, error) {
+
+                alert(xhr.responseText);
+            }
+        });
+
+        $.ajax({
+            type: "GET",
+            url: "/Mercadoria/GetAno",
+            contentType: "application/json; chatset=utf-8",
+            cache: false,
+            data: "{}",
+            success: function (data) {
+                var s = '<option value="">Por favor, selecione um ano.</option>';
+                for (var i = 0; i < data.length; i++) {
+                    s += '<option value="' + data[i].ano + '">' + data[i].ano + '</option>';
+                }
+                $("#anoDropdown").html(s);
+            },
+            error: function (xhr, status, error) {
+
+                alert(xhr.responseText);
+            }
+        });
+
+        // Chamar o evento de clique programaticamente
+        $("#linkDownload").trigger("click");
+
+      
+
+        function excluirArquivo() {
+            // Verificar se o caminho de download está definido
+            if (downloadPath !== '') {
+                // Executar uma requisição AJAX para chamar o método de exclusão do arquivo no backend
+                $.ajax({
+                    url: '/Mercadoria/ExcluirArquivo',
+                    type: 'POST',
+                    data: { filePath: downloadPath },
+                    success: function (response) {
+                        console.log("Arquivo excluído com sucesso!");
+                        $("#divLinkDownload").hide();
+                    },
+                    error: function (xhr, status, error) {
+                        console.log("Ocorreu um erro ao excluir o arquivo: " + error);
+                    }
+                });
+            } else {
+                console.log("Caminho de download não definido.");
+            }
+        }
+        $("#linkDownload").click(function () {
+            excluirArquivo();
+        });
+
+        $("#btnPdf").click(function (e) {
+            e.preventDefault();
+            $("#divLinkDownload").hide();
+            if ($("form").valid()) {
+                var MesAnoModel = { Mes: $("#mesDropdown").val(), Ano: $("#anoDropdown").val() }
+
+                var y = JSON.stringify(MesAnoModel);
+
+
+                $.ajax({
+                    type: "POST",
+                    url: "/Mercadoria/RelatorioPdf",
+                    contentType: "application/json; chatset=utf-8",
+                    cache: false,
+                    data: y,
+                    success: function (response) {
+                        $("#divErro").hide();
+                        if (response.errorStr != undefined && response.errorStr != null && response.errorStr != '') {
+                            $("#errorMsg").html(response.errorStr);
+                            $("#divErro").show();
+
+                        }
+                        else {
+
+                            // Exibir o link de download
+                            downloadPath = window.location.origin + '/PDFs/' + response.fileName;
+                            
+                            $("#linkDownload").attr("href", downloadPath);
+                            $("#divLinkDownload").show();
+                        }
+                    },
+                    error: function (xhr, status, error) {
+
+                        var errorMessage = xhr.responseText;
+                        $("#errorMsg").html(errorMessage);
+                        $("#divErro").show();
+                    }
+                });
+            }
+        });
+
+
+
+
+
+        $("#btnSubmit").click(function (e) {
+            e.preventDefault();
+
+            $("#divErro").hide();
+            $("#divSuccess").hide();
+            $("#divLinkDownload").hide();
+            var MesAnoModel = { Mes: $("#mesDropdown").val(), Ano: $("#anoDropdown").val() }
+
+            var y = JSON.stringify(MesAnoModel);
+
+            //ajax aqui
+
+            if ($("form").valid()) {
+                $.ajax({
+                    url: "/Mercadoria/RelatorioMensal",
+                    type: "POST",
+                    contentType: "application/json; chatset=utf-8",
+                    cache: false,
+                    data: y,
+                    success: function (response) {
+                        $("#divErro").hide();
+                        if (response.errorStr != undefined && response.errorStr != null && response.errorStr != '') {
+                            $("#errorMsg").html(response.errorStr);
+
+                            $("#divErro").show();
+                        }
+                        else {
+
+
+                            // DADOS PARA O GRÁFICO
+                            var chartOptions = {
+                                chart: {
+                                    type: 'scatter'
+                                },
+                                title: {
+                                    text: 'Relação entre Valores de Entrada e Saída'
+                                },
+                                xAxis: {
+                                    title: {
+                                        text: 'Entrada'
+                                    }
+                                },
+                                yAxis: {
+                                    title: {
+                                        text: 'Saída'
+                                    }
+                                },
+                                series: [{
+                                    name: 'Valores',
+                                    data: response.map(function (item) {
+                                        return [item.quantidadeEntrada, item.quantidadeSaida];
+                                    })
+                                }]
+                            };
+
+
+
+
+
+                            // CRIAÇÃO DO GRÁFICO
+                            $('#chartContainer').highcharts(chartOptions);
+
+
+
+
+
+
+
+                            //datatable aqui
+                            var table = $('#exampleDatatable').DataTable();
+                            table.destroy();
+
+                            $("#exampleDatatable").DataTable({
+                                data: response,
+                                retrieve: true,//datatables não dão refresh, então é preciso colocar essa linha pra dizer que é pra usar os dados antigos no click de um botão.
+                                destroy: true,
+                                columns:
+                                    [
+                                        { 'data': 'nomeMercadoria' },
+                                        { 'data': 'numeroRegistro' },
+                                        { 'data': 'quantidadeEntrada' },
+                                        { 'data': 'quantidadeSaida' },
+                                        { 'data': 'quantidadeRestante' }//,  //abaixo: colunas de botões
+                                        //{
+                                        //    "mData": null,
+                                        //    "bSortable": false//,
+                                        //    //"mRender": function (o) {
+
+                                        //    //}
+                                        //},
+                                    ]
+                            });
+                        }
+                    },
+                    error: function (xhr, status, error) {
+
+                        var errorMessage = xhr.responseText;
+                        $("#errorMsg").html(errorMessage);
+                        $("#divErro").show();
+                    }
+                });
+            }
+        });
+
+
+
+    });
+
+</script>
+

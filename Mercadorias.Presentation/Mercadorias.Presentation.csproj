@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net5.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="HighCharts" Version="1.0.0" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Mercadorias.Application\Mercadorias.Application.csproj" />
+    <ProjectReference Include="..\Mercadorias.Domain\Mercadorias.Domain.csproj" />
+    <ProjectReference Include="..\Mercadorias.Infra.Repository\Mercadorias.Infra.Repository.csproj" />
+    <ProjectReference Include="..\Mercadorias.Reports.Pdf\Mercadorias.Reports.Pdf.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="wwwroot\PDFs\" />
+  </ItemGroup>
+
+</Project>
